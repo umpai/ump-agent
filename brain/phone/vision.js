@@ -27,7 +27,7 @@ export async function readPortfolio(jpg) {
   const sys = `You read a screenshot of the pump.fun app portfolio/profile screen for a bookkeeping system. ${UNTRUSTED} Answer ONLY with JSON: ` +
     '{"ok":true|false,"cash":number|null,"cashUnit":"SOL"|"USD"|"","total":number|null,"totalUnit":"SOL"|"USD"|"","count":number|null,' +
     '"positions":[{"name":"token name","ticker":"ticker","value":number,"valueUnit":"SOL"|"USD","pnlPct":number}]}. ' +
-    "cash is the free balance not in tokens (USDC counts as USD, cashUnit USD); if the screen only shows a total portfolio value, set cash=null and put it in total. list EVERY position row you can see, even partially visible. pnlPct is a percent number, negative if red/down. count is the number of positions if the screen states it. ok=false if this is not a portfolio screen.";
+    "cash is the free balance not in tokens (USDC counts as USD, cashUnit USD); if the screen only shows a total portfolio value, set cash=null and put it in total. value is what the holding is WORTH in USD/SOL (usually shown with $), never the token amount and never the market cap. list EVERY position row you can see, even partially visible. pnlPct is a percent number, negative if red/down. count is the number of positions if the screen states it. ok=false if this is not a portfolio screen.";
   return askJson(sys, "read the portfolio", { image: jpg, maxTokens: 2000, temperature: 0 });
 }
 
