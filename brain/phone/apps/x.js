@@ -54,12 +54,24 @@ export async function post(text, { dry = false } = {}) {
   const item = { t: Date.now(), text: text.slice(0, 280), posted: false, via: "phone" };
   const finish = (r) => { Object.assign(item, r); out.push(item); save("outbox", out.slice(-200)); return item; };
   if (CFG.x.postVia === "off") return finish({ skipped: "X_POST_VIA=off" });
+  // страховка: пост с чем-то похожим на адрес контракта не уходит никогда (в X только $TICKER)
+  if (/[1-9A-HJ-NP-Za-km-z]{25,}/.test(item.text.replace(/https:\/\/umpai\.trade\S*/g, ""))) return finish({ skipped: "contract address in the text, not posted" });
   if (postsLastHour() >= CFG.x.maxPerHour) return finish({ skipped: `max ${CFG.x.maxPerHour} posts per hour` });
   if (CFG.x.postVia === "api") return finish(await viaApi(item.text, dry));
   try {
     ph.step("writing the post");
     await ph.shareText(item.text, await pkg());               // X открывает новый пост с этим текстом
-    await wait(4500);
+    await wait(4000);
+    // у X два получателя «поделиться»: Chat и Post. Выбираем Post и «Just once»
+    const sc = await ph.screen();
+    if (sc.all.includes("just once")) {
+      const { h } = await ph.size();
+      const opt = sc.nodes.filter((n) => n.text === "Post" && n.y > h * 0.6).sort((a, b) => b.y - a.y)[0];
+      if (opt) { await ph.tap(opt.x, opt.y, "x post"); await wait(800); }
+      const once = await ph.find({ textAny: ["Just once"] });
+      if (once) { await ph.tap(once.x, once.y, "just once"); }
+      await wait(3500);
+    }
     const btn = await ph.find(S.postButton);
     if (!btn) throw new Error("post button not found — calibrate ui/x.json");
     if (dry) {
