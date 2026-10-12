@@ -445,7 +445,7 @@ footer p{margin:0;max-width:70ch;font-family:var(--sans)}
     <a id="fPump" href="https://pump.fun" target="_blank" rel="noopener">pump.fun</a>
   </nav>
   <span class="ca">contract <code id="caCode">none yet</code><button id="caBtn" type="button" disabled>copy</button></span>
-  <p>Experimental AI agent trading real memecoins. Not financial advice. There is no official UMP token yet, so a contract you see anywhere else is not ours.</p>
+  <p>Experimental AI agent trading real memecoins. Not financial advice. <span id="caNote">There is no official UMP token yet, so a contract you see anywhere else is not ours.</span></p>
 </footer>
 
 <div id="cursor" aria-hidden="true">
@@ -519,7 +519,11 @@ function blip(f, d = .05, vol = .03) {
 }
 const sTick = () => blip(1500, .03, .015);
 const sBuy = () => { blip(660, .08); setTimeout(() => blip(990, .14), 90); };
-$('#tokenBtn').addEventListener('click', e => { const b = e.currentTarget; b.classList.add('open'); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove('open'), 1800); });
+$('#tokenBtn').addEventListener('click', e => {
+  const b = e.currentTarget, tip = $('#tokenTip');
+  if (S.ca) { try { navigator.clipboard.writeText(S.ca).then(() => { tip.textContent = 'CA COPIED'; setTimeout(() => tip.textContent = caShort(S.ca) + ' · CLICK TO COPY', 1500); }); } catch (err) {} }
+  b.classList.add('open'); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove('open'), 1800);
+});
 $('#snd').addEventListener('click', e => { S.sound = !S.sound; e.currentTarget.setAttribute('aria-pressed', S.sound); e.currentTarget.textContent = S.sound ? 'sound on' : 'sound off'; if (S.sound) sTick(); });
 
 /* ---------- phones ---------- */
@@ -644,8 +648,15 @@ function renderHist() {
 function setStatus(kind, text) { $('#mStatus').dataset.s = kind; $('#mStatusT').textContent = text; }
 function setNotice(kind, html) { const w = $('#noticeWrap'), n = $('#notice'); if (!kind) { w.hidden = true; return; } w.hidden = false; n.className = 'notice ' + kind; n.innerHTML = html; }
 function setLink(ids, url) { ids.forEach(id => { const a = $(id); if (!a) return; if (url) { a.href = url; a.removeAttribute('aria-disabled'); a.hidden = false; } else { a.href = '#'; a.setAttribute('aria-disabled', 'true'); if (id.startsWith('#f')) a.hidden = true; } }); }
+const caShort = ca => ca.slice(0, 4) + '…' + ca.slice(-4);
 function setContract(ca) {
   const code = $('#caCode'), btn = $('#caBtn');
+  ca = /^[1-9A-HJ-NP-Za-km-z]{32,48}$/.test(String(ca || '').trim()) ? String(ca).trim() : '';
+  S.ca = ca;
+  // $UMP в шапке: без контракта — NOT LIVE YET, с контрактом — CA и копирование по клику
+  $('#tokenTip').textContent = ca ? caShort(ca) + ' · CLICK TO COPY' : 'NOT LIVE YET';
+  $('#tokenTip').style.color = ca ? 'var(--up)' : ''; $('#tokenTip').style.borderColor = ca ? 'var(--up)' : '';
+  $('#caNote').textContent = ca ? 'The only official $UMP contract is the one shown here. Anything else is not ours.' : 'There is no official UMP token yet, so a contract you see anywhere else is not ours.';
   if (!ca) { code.textContent = 'none yet'; btn.disabled = true; return; }
   code.textContent = ca.slice(0, 4) + '…' + ca.slice(-4); btn.disabled = false;
   btn.onclick = () => { const ok = () => { btn.textContent = 'copied'; setTimeout(() => btn.textContent = 'copy', 1500); };
