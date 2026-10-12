@@ -71,6 +71,14 @@ h1,h2,h3{margin:0;font-weight:500}
 .links a:hover,.links button:hover{color:var(--ink);border-color:var(--ink3)}
 .links button[aria-pressed=true]{color:var(--up);border-color:var(--up2)}
 .links a[aria-disabled=true]{opacity:.4;pointer-events:none}
+/* $UMP: the token that doesn't exist yet */
+.links .token{position:relative;color:#000;background:var(--up);border-color:var(--up);font-weight:600;letter-spacing:.02em;
+  box-shadow:inset 0 0 0 1px #000,3px 3px 0 var(--up2)}
+.links .token:hover,.links .token:focus-visible{color:#000;border-color:var(--up);background:var(--up)}
+.token .tip-t{position:absolute;top:calc(100% + 10px);right:0;white-space:nowrap;background:#000;color:var(--warn);border:1px solid var(--warn);
+  font:600 11px var(--mono);letter-spacing:.12em;padding:6px 9px;opacity:0;transform:translateY(-4px);pointer-events:none;transition:opacity .15s,transform .15s steps(2)}
+.token .tip-t::before{content:"";position:absolute;top:-5px;right:14px;width:8px;height:8px;background:#000;border-left:1px solid var(--warn);border-top:1px solid var(--warn);transform:rotate(45deg)}
+.token:hover .tip-t,.token:focus-visible .tip-t,.token.open .tip-t{opacity:1;transform:none}
 
 .notice{max-width:1480px;margin:0 auto;padding:10px var(--gut);display:flex;gap:12px;align-items:center;font-size:12px;color:var(--ink2);border-bottom:1px solid var(--line)}
 .notice b{font-weight:500}
@@ -326,6 +334,7 @@ footer p{margin:0;max-width:70ch;font-family:var(--sans)}
       <a class="ext" id="lX" href="#" target="_blank" rel="noopener" aria-disabled="true">x</a>
       <a class="ext" id="lGh" href="#" target="_blank" rel="noopener" aria-disabled="true">github</a>
       <button id="snd" type="button" aria-pressed="false">sound off</button>
+      <button class="token" id="tokenBtn" type="button" aria-describedby="tokenTip">$UMP<span class="tip-t" id="tokenTip" role="tooltip">NOT LIVE YET</span></button>
     </nav>
   </div>
 </header>
@@ -510,6 +519,7 @@ function blip(f, d = .05, vol = .03) {
 }
 const sTick = () => blip(1500, .03, .015);
 const sBuy = () => { blip(660, .08); setTimeout(() => blip(990, .14), 90); };
+$('#tokenBtn').addEventListener('click', e => { const b = e.currentTarget; b.classList.add('open'); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove('open'), 1800); });
 $('#snd').addEventListener('click', e => { S.sound = !S.sound; e.currentTarget.setAttribute('aria-pressed', S.sound); e.currentTarget.textContent = S.sound ? 'sound on' : 'sound off'; if (S.sound) sTick(); });
 
 /* ---------- phones ---------- */
@@ -716,7 +726,7 @@ function renderTrades(list, demo) {
     <td>${esc(t.reason || '')}</td><td class="r muted">${esc(ago(t.closedAt))}</td></tr>`).join('');
 }
 function renderRules(r) {
-  const R = r || { posMin: 10, posMax: 25, reserve: 15, dayLossLimit: 45, haltBelow: 180, maxTweetsPerHour: 4 };
+  const R = r || { posMin: 5, posMax: 15, reserve: 15, dayLossLimit: 45, haltBelow: 180, maxTweetsPerHour: 4 };
   const rows = [
     ['position size', isNum(R.posMin) && isNum(R.posMax) ? `$${R.posMin}–$${R.posMax}` : null],
     ['cash he never touches', isNum(R.reserve) ? `$${R.reserve}` : null],
