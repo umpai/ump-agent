@@ -1,0 +1,11 @@
+{
+  "_readme": "Телефон #3: приложение X. Профиль открывается ссылкой x.com/<handle>, новый пост — через «поделиться текстом» в X, затем кнопка Post. Калибровка: `npm run phone:snap -- 3` на экране нового поста.",
+  "package": "",
+  "profileUrl": "https://x.com/{HANDLE}",
+  "homeUrl": "https://x.com/home",
+  "steps": {
+    "postButton": { "textAny": ["Post", "Tweet", "Reply"], "pick": "highest", "xy": null },
+    "discard":    { "textAny": ["Discard", "Delete"], "xy": null }
+  },
+  "postedWords": ["your post was sent", "post sent", "your tweet was sent"]
+}

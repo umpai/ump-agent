@@ -1,0 +1,26 @@
+{
+  "_readme": "Карта интерфейса приложения pump.fun на телефоне #1. Селекторы ищутся по тексту на экране (uiautomator). xy — запасные координаты (доли экрана 0..1), null = не задано. Калибровка: открыть нужный экран на телефоне, `npm run phone:snap -- 1`, посмотреть brain/data/phone/1/elements.txt и поправить тексты/координаты здесь. amountUnit: в чём приложение принимает сумму покупки — SOL или USD.",
+  "package": "",
+  "deepLink": "https://pump.fun/coin/{CA}",
+  "amountUnit": "SOL",
+  "steps": {
+    "search":        { "descContainsAny": ["search"], "textContainsAny": ["Search"], "xy": null },
+    "searchInput":   { "textContainsAny": ["Search", "token or address"], "xy": null },
+    "firstResult":   { "xy": null },
+    "buyTab":        { "textAny": ["Buy"], "pick": "highest", "xy": null },
+    "sellTab":       { "textAny": ["Sell"], "pick": "highest", "xy": null },
+    "amountInput":   { "textContainsAny": ["0.0", "Amount", "Enter amount"], "xy": null },
+    "sell100":       { "textAny": ["100%", "Max", "MAX"], "xy": null },
+    "sell50":        { "textAny": ["50%"], "xy": null },
+    "confirmBuy":    { "textAny": ["Buy", "Place trade", "Confirm", "Swap"], "pick": "lowest", "xy": null },
+    "confirmSell":   { "textAny": ["Sell", "Place trade", "Confirm", "Swap"], "pick": "lowest", "xy": null },
+    "confirmSheet":  { "textAny": ["Confirm", "Confirm trade", "Yes"], "pick": "lowest", "xy": null },
+    "commentsTab":   { "textAny": ["Comments", "Thread", "Replies", "Chat"], "xy": null },
+    "commentInput":  { "textContainsAny": ["Add a comment", "Write a reply", "Post a reply", "Say something", "Write a comment"], "xy": null },
+    "commentPost":   { "textAny": ["Post", "Reply", "Send"], "pick": "lowest", "xy": null },
+    "navPortfolio":  { "textAny": ["Portfolio", "Profile", "Wallet"], "descContainsAny": ["portfolio", "profile", "wallet"], "xy": null },
+    "navHome":       { "textAny": ["Home", "Explore"], "descContainsAny": ["home", "explore"], "xy": null }
+  },
+  "boughtWords": ["success", "bought", "transaction confirmed", "order filled", "your position", "you own", "holding"],
+  "dangerWords": []
+}

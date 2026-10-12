@@ -1,0 +1,12 @@
+{
+  "_readme": "Телефон #2: gmgn.ai в Chrome. Чисто визуальный ресёрч — если элемент не найден, шаг пропускается. Калибровка: `npm run phone:snap -- 2` на странице токена.",
+  "package": "",
+  "tokenUrl": "https://gmgn.ai/sol/token/{CA}",
+  "homeUrl": "https://gmgn.ai/?chain=sol",
+  "steps": {
+    "tf1h":     { "textAny": ["1h", "1H"], "xy": null },
+    "tf5m":     { "textAny": ["5m", "5M"], "xy": null },
+    "holders":  { "textContainsAny": ["Holders"], "xy": null },
+    "trades":   { "textContainsAny": ["Activity", "Trades"], "xy": null }
+  }
+}
