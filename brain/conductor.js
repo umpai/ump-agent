@@ -33,8 +33,13 @@ export async function lookAt(t, research) {
 }
 
 // Текст поста: тикер, одна строка тезиса, ссылка на сайт, пометка «ИИ, не финсовет». Без обещаний.
-export function postText(symbol, line, size) {
-  const clean = String(line || "").replace(/https?:\/\/\S+|@\w+|\b[1-9A-HJ-NP-Za-km-z]{30,50}\b|[^\x20-\x7E]/g, " ")
+// Жёсткое правило: в X только $TICKER, адрес контракта (CA) токена — никогда.
+// Вырезаем сам CA, любые base58-строки от 25 символов, ссылки и упоминания «ca:».
+export const CA_LIKE = /[1-9A-HJ-NP-Za-km-z]{25,}/;
+export function postText(symbol, line, size, ca = "") {
+  let raw = String(line || "");
+  if (ca) raw = raw.split(ca).join(" ");
+  const clean = raw.replace(/https?:\/\/\S+|www\.\S+|\b\S+\.(fun|com|io|xyz|app|net|org|trade)\/\S*|@\w+|[1-9A-HJ-NP-Za-km-z]{25,}|\b(ca|contract)\s*[:=]\s*\S*|[^\x20-\x7E]/gi, " ")
     .replace(/\b(100x|1000x|moon(ing)?|gem|lfg|guaranteed)\b/gi, "").replace(/\s+/g, " ").trim();
   const tick = "$" + String(symbol).toUpperCase();
   const body = clean.toLowerCase().includes(tick.toLowerCase()) ? clean : `${tick}: ${clean}`;
@@ -42,11 +47,11 @@ export function postText(symbol, line, size) {
   return (body.slice(0, 280 - tail.length).replace(/[\s.,;]+$/, "") + "." + tail).slice(0, 280);
 }
 
-export async function postAbout(symbol, line, size, { dry }) {
+export async function postAbout(symbol, line, size, { dry, ca = "" }) {
   if (!phonesOn() || !CFG.phone.pads[3]) {
     if (CFG.x.postVia !== "api") return null;
   }
-  const text = postText(symbol, line, size);
+  const text = postText(symbol, line, size, ca);
   try {
     const r = CFG.x.postVia === "api" || !CFG.phone.pads[3]
       ? await xapp.post(text, { dry })

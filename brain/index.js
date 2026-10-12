@@ -233,7 +233,7 @@ async function hunt(bank, journal, brain, prices, paused) {
     pushEvent({ type: "buy", symbol: t.symbol, size, paper: !!res.paper || CFG.bankMode === "paper",
       text: `${CFG.bankMode === "paper" ? "paper buy" : "bought"} $${t.symbol} for $${size}. ${d.plan || ""}`.trim() });
     if (CFG.bankMode === "live") bank.needSync = true;
-    await postAbout(t.symbol, d.post || d.thesis, size, { dry: CFG.bankMode === "paper" || CFG.phone.dryRun });
+    await postAbout(t.symbol, d.post || d.thesis, size, { dry: CFG.bankMode === "paper" || CFG.phone.dryRun, ca: t.address });
   }
 }
 
