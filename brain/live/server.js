@@ -17,7 +17,7 @@ import { loadBank } from "../bank.js";
 import { loadJournal } from "../memory.js";
 import { loadBrain } from "../learn.js";
 import { getControl, setControl, MODES } from "../control.js";
-import { phones, hand, stopped } from "../phone/phones.js";
+import { phones, hand, stopped, wait } from "../phone/phones.js";
 import { idleLoop } from "../conductor.js";
 import "./screens.js";
 import { tour } from "../phone/tour.js";
@@ -83,7 +83,7 @@ bus.on("event", (e) => {
   if (th) send("thought", th);
 });
 
-const readBody = (req) => new Promise((res) => { let b = ""; req.on("data", (c) => { b += c; if (b.length > 1000) req.destroy(); }); req.on("end", () => { try { res(JSON.parse(b || "{}")); } catch { res({}); } }); });
+const readBody = (req, max = 1000) => new Promise((res) => { let b = ""; req.on("data", (c) => { b += c; if (b.length > max) req.destroy(); }); req.on("end", () => { try { res(JSON.parse(b || "{}")); } catch { res({}); } }); });
 const cors = { "access-control-allow-origin": CFG.live.allowOrigin, "cache-control": "no-store" };
 
 http.createServer(async (req, res) => {
@@ -108,6 +108,34 @@ http.createServer(async (req, res) => {
         .then((r) => { lastTour = { at: Date.now(), screens: r }; }).catch((e) => { lastTour = { at: Date.now(), error: e.message }; })
         .finally(() => { touring = false; });
       res.writeHead(202); return res.end("started");
+    }
+    // калибровка вручную: короткая цепочка действий на одном телефоне и снимок в конце.
+    // Только для калибровки карты интерфейса; уважает STOP и режим off (guard внутри Phone).
+    if (url === "/admin/phone" && req.method === "POST") {
+      const { phone: n, actions } = await readBody(req, 20000);
+      const ph = phones[Number(n)];
+      if (!ph?.on || !Array.isArray(actions) || actions.length > 25) { res.writeHead(400); return res.end("bad request"); }
+      const log = [];
+      try {
+        const snap = await hand.run(ph.n, "calibration", async () => {
+          const { w, h } = await ph.size();
+          for (const a of actions) {
+            if (a.app) { await ph.openApp(String(a.app)); log.push("app " + a.app); }
+            else if (a.open) { await ph.openUrl(String(a.open), a.pkg ? String(a.pkg) : ""); log.push("open " + a.open); }
+            else if (a.tap) { await ph.tap(a.tap[0] * w, a.tap[1] * h, a.label || "calibration"); log.push("tap " + a.tap); }
+            else if (a.swipe) { const [x1, y1, x2, y2] = a.swipe; await ph.swipe(x1 * w, y1 * h, x2 * w, y2 * h, 450); log.push("swipe " + a.swipe); }
+            else if (a.back) { await ph.back(); log.push("back"); }
+            else if (a.type) { await ph.type(String(a.type).slice(0, 60)); log.push("type"); }
+            else if (a.wait) await wait(Math.min(15000, Number(a.wait) || 0));
+          }
+          await wait(800);
+          const jpg = await ph.screenshot().catch(() => null);
+          const { nodes } = await ph.screen().catch(() => ({ nodes: [] }));
+          return { w, h, jpg: jpg ? jpg.toString("base64") : "", elements: nodes.filter((x) => x.text || x.desc).map((x) => ({ t: x.text, d: x.desc, x: +(x.x / w).toFixed(3), y: +(x.y / h).toFixed(3) })) };
+        }, 0);
+        res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+        return res.end(JSON.stringify({ log, ...snap }));
+      } catch (e) { res.writeHead(500); return res.end(JSON.stringify({ log, error: e.message })); }
     }
     if (url === "/admin/tour") {
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
