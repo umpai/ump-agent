@@ -1,26 +1,226 @@
 {
-  "_readme": "Карта интерфейса приложения pump.fun на телефоне #1. Селекторы ищутся по тексту на экране (uiautomator). xy — запасные координаты (доли экрана 0..1), null = не задано. Калибровка: открыть нужный экран на телефоне, `npm run phone:snap -- 1`, посмотреть brain/data/phone/1/elements.txt и поправить тексты/координаты здесь. amountUnit: в чём приложение принимает сумму покупки — SOL или USD.",
-  "package": "",
+  "_readme": "Карта интерфейса приложения pump.fun (com.batonresearch.pump) на телефоне #1, экран 720x1280. Дерева доступности почти нет, поэтому главное — xy (доли экрана 0..1), откалиброванные по скриншотам 2026-10-12. vision — описание для «глаз», если ни текст, ни xy не сработали. Сумма вводится в USDC на встроенной клавиатуре (keypad).",
+  "package": "com.batonresearch.pump",
   "deepLink": "https://pump.fun/coin/{CA}",
-  "amountUnit": "SOL",
+  "amountUnit": "USD",
   "steps": {
-    "search":        { "descContainsAny": ["search"], "textContainsAny": ["Search"], "xy": null },
-    "searchInput":   { "textContainsAny": ["Search", "token or address"], "xy": null },
-    "firstResult":   { "xy": null },
-    "buyTab":        { "textAny": ["Buy"], "pick": "highest", "xy": null },
-    "sellTab":       { "textAny": ["Sell"], "pick": "highest", "xy": null },
-    "amountInput":   { "textContainsAny": ["0.0", "Amount", "Enter amount"], "xy": null },
-    "sell100":       { "textAny": ["100%", "Max", "MAX"], "xy": null },
-    "sell50":        { "textAny": ["50%"], "xy": null },
-    "confirmBuy":    { "textAny": ["Buy", "Place trade", "Confirm", "Swap"], "pick": "lowest", "xy": null },
-    "confirmSell":   { "textAny": ["Sell", "Place trade", "Confirm", "Swap"], "pick": "lowest", "xy": null },
-    "confirmSheet":  { "textAny": ["Confirm", "Confirm trade", "Yes"], "pick": "lowest", "xy": null },
-    "commentsTab":   { "textAny": ["Comments", "Thread", "Replies", "Chat"], "xy": null },
-    "commentInput":  { "textContainsAny": ["Add a comment", "Write a reply", "Post a reply", "Say something", "Write a comment"], "xy": null },
-    "commentPost":   { "textAny": ["Post", "Reply", "Send"], "pick": "lowest", "xy": null },
-    "navPortfolio":  { "textAny": ["Portfolio", "Profile", "Wallet"], "descContainsAny": ["portfolio", "profile", "wallet"], "xy": null },
-    "navHome":       { "textAny": ["Home", "Explore"], "descContainsAny": ["home", "explore"], "xy": null }
+    "search": {
+      "descContainsAny": [
+        "search"
+      ],
+      "textContainsAny": [
+        "Search"
+      ],
+      "xy": [
+        0.878,
+        0.938
+      ]
+    },
+    "searchInput": {
+      "textContainsAny": [
+        "Search",
+        "token or address"
+      ],
+      "xy": null
+    },
+    "firstResult": {
+      "xy": null
+    },
+    "buyTab": {
+      "textAny": [
+        "Buy"
+      ],
+      "pick": "highest",
+      "xy": null,
+      "vision": "the 'Buy' tab or toggle that switches the order sheet to buying (only if the sheet has a Buy/Sell switch)"
+    },
+    "sellTab": {
+      "textAny": [
+        "Sell"
+      ],
+      "pick": "highest",
+      "xy": null,
+      "vision": "the 'Sell' tab, toggle or button that switches the order sheet to selling this token"
+    },
+    "amountInput": {
+      "xy": null,
+      "note": "не поле, а встроенная клавиатура — см. keypad"
+    },
+    "sell100": {
+      "textAny": [
+        "100%",
+        "Max",
+        "MAX"
+      ],
+      "xy": [
+        0.849,
+        0.441
+      ]
+    },
+    "sell50": {
+      "textAny": [
+        "50%"
+      ],
+      "xy": [
+        0.383,
+        0.441
+      ]
+    },
+    "confirmBuy": {
+      "textAny": [
+        "Submit"
+      ],
+      "pick": "lowest",
+      "xy": [
+        0.5,
+        0.975
+      ]
+    },
+    "confirmSell": {
+      "textAny": [
+        "Submit"
+      ],
+      "pick": "lowest",
+      "xy": [
+        0.5,
+        0.975
+      ]
+    },
+    "confirmSheet": {
+      "textAny": [
+        "Confirm",
+        "Confirm trade"
+      ],
+      "pick": "lowest",
+      "xy": null,
+      "vision": "a 'Confirm' button of a confirmation dialog for the trade just submitted. found=false if there is no such dialog",
+      "visionLabel": "confirm"
+    },
+    "commentsTab": {
+      "textAny": [
+        "Comments",
+        "Thread",
+        "Replies",
+        "Chat"
+      ],
+      "xy": null
+    },
+    "commentInput": {
+      "textContainsAny": [
+        "Add a comment",
+        "Write a reply",
+        "Post a reply",
+        "Say something",
+        "Write a comment"
+      ],
+      "xy": null
+    },
+    "commentPost": {
+      "textAny": [
+        "Post",
+        "Reply",
+        "Send"
+      ],
+      "pick": "lowest",
+      "xy": null
+    },
+    "navPortfolio": {
+      "textAny": [
+        "Portfolio",
+        "Profile",
+        "Wallet"
+      ],
+      "descContainsAny": [
+        "portfolio",
+        "profile",
+        "wallet"
+      ],
+      "xy": [
+        0.69,
+        0.938
+      ]
+    },
+    "navHome": {
+      "textAny": [
+        "Home",
+        "Explore"
+      ],
+      "descContainsAny": [
+        "home",
+        "explore"
+      ],
+      "xy": [
+        0.136,
+        0.938
+      ]
+    },
+    "tradeButton": {
+      "xy": [
+        0.4,
+        0.93
+      ],
+      "note": "большая зелёная кнопка ⇄ TICKER внизу страницы токена. НЕ молния справа — это мгновенная покупка"
+    }
   },
-  "boughtWords": ["success", "bought", "transaction confirmed", "order filled", "your position", "you own", "holding"],
-  "dangerWords": []
+  "boughtWords": [
+    "success",
+    "bought",
+    "transaction confirmed",
+    "order filled",
+    "your position",
+    "you own",
+    "holding"
+  ],
+  "dangerWords": [],
+  "launchWaitMs": 6500,
+  "keypad": {
+    "1": [
+      0.163,
+      0.536
+    ],
+    "2": [
+      0.5,
+      0.536
+    ],
+    "3": [
+      0.832,
+      0.536
+    ],
+    "4": [
+      0.163,
+      0.624
+    ],
+    "5": [
+      0.5,
+      0.624
+    ],
+    "6": [
+      0.832,
+      0.624
+    ],
+    "7": [
+      0.163,
+      0.711
+    ],
+    "8": [
+      0.5,
+      0.711
+    ],
+    "9": [
+      0.832,
+      0.711
+    ],
+    ".": [
+      0.163,
+      0.8
+    ],
+    "0": [
+      0.5,
+      0.8
+    ],
+    "del": [
+      0.832,
+      0.8
+    ]
+  }
 }
