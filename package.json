@@ -15,6 +15,7 @@
     "sync": "node brain/cli.js sync",
     "launch": "node brain/cli.js launch",
     "fix": "node brain/cli.js fix",
+    "threshold": "node brain/cli.js threshold",
     "playbook": "node brain/cli.js playbook",
     "resume": "node brain/cli.js resume",
     "llm:test": "node brain/cli.js llm-test",
