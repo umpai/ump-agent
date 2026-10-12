@@ -29,12 +29,13 @@
 <br>
 
 ```text
-██╗   ██╗███╗   ███╗██████╗      three phones.
-██║   ██║████╗ ████║██╔══██╗     one thumb.
-██║   ██║██╔████╔██║██████╔╝     zero chill.
-██║   ██║██║╚██╔╝██║██╔═══╝
-╚██████╔╝██║ ╚═╝ ██║██║          an ai that trades pump.fun with its hands
- ╚═════╝ ╚═╝     ╚═╝╚═╝          and shows you every tap.
+██      ██  ██      ██  ████████
+██      ██  ████  ████  ██      ██      three phones.
+██      ██  ██  ██  ██  ██      ██      one thumb.
+██      ██  ██  ██  ██  ████████        zero chill.
+██      ██  ██      ██  ██
+██      ██  ██      ██  ██              an ai that trades pump.fun
+  ██████    ██      ██  ██              with its hands, and shows every tap.
 ```
 
 ## The three phones
