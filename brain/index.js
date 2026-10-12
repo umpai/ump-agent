@@ -37,11 +37,21 @@ async function manageOpen(bank, journal, prices) {
     if (pos.thesis && !pos.thesisPosted && (pos.thesisTries || 0) < 3) {
       pos.thesisTries = (pos.thesisTries || 0) + 1;
       const r = await exec.retryThesis(pos).catch((e) => ({ ok: false, error: e.message }));
+      if (r.skipped) { pos.thesisTries = 3; continue; }       // комментарии в приложении выключены — не тратим руку
       pos.thesisPosted = !!r.ok;
       pushEvent(r.ok ? { type: "thesis", symbol: pos.symbol, text: `thesis posted on $${pos.symbol}` }
         : { type: "error", text: `thesis for $${pos.symbol} failed (try ${pos.thesisTries}/3): ${r.error}` });
       break;
     }
+  }
+  // покупка, которая подтвердилась только сверкой с приложением: пост в X ещё не делали — делаем один раз
+  // (только $ТИКЕР, без CA — правило внутри postAbout)
+  for (const pos of bank.positions) {
+    if (pos.announced || pos.paper || CFG.bankMode !== "live" || Date.now() - (pos.openedAt || 0) > 3 * 3600e3) continue;
+    pos.announced = true;
+    const line = pos.post || pos.thesis;
+    if (line) await postAbout(pos.symbol, line, Math.round(pos.size), { dry: CFG.phone.dryRun, ca: pos.address }).catch((e) => log("post failed", e.message));
+    break;
   }
   for (const pos of [...bank.positions]) {
     const t = prices.get(pos.address);
@@ -223,7 +233,7 @@ async function hunt(bank, journal, brain, prices, paused) {
     if (res.unconfirmed) {
       bank.needSync = true;
       (bank.pendingBuys ||= []).push({ address: t.address, symbol: t.symbol, name: t.gmgn?.name || t.name || "", url: t.url, size,
-        price: priceOf(t), mcap: t.mcap || t.fdv || 0, at: Date.now(), checks: 0, meta: { signals: sig, score: sc, thesis: d.thesis, plan } });
+        price: priceOf(t), mcap: t.mcap || t.fdv || 0, at: Date.now(), checks: 0, meta: { signals: sig, score: sc, thesis: d.thesis, plan }, post: d.post || d.thesis });
       bank.entryTimes.push(Date.now()); entered++;
       pushEvent({ type: "error", text: `buy $${t.symbol} $${size} sent but not confirmed on screen, checking the app` });
       continue;
@@ -233,6 +243,8 @@ async function hunt(bank, journal, brain, prices, paused) {
     pushEvent({ type: "buy", symbol: t.symbol, size, paper: !!res.paper || CFG.bankMode === "paper",
       text: `${CFG.bankMode === "paper" ? "paper buy" : "bought"} $${t.symbol} for $${size}. ${d.plan || ""}`.trim() });
     if (CFG.bankMode === "live") bank.needSync = true;
+    const mine = bank.positions.find((p) => p.address === t.address);
+    if (mine) mine.announced = true;
     await postAbout(t.symbol, d.post || d.thesis, size, { dry: CFG.bankMode === "paper" || CFG.phone.dryRun, ca: t.address });
   }
 }
@@ -262,7 +274,9 @@ export async function syncWithApp(bank, journal, force = false) {
   for (const pos of [...bank.positions]) {
     const f = pf.positions.find((q, i) => !matched.has(i) && (norm(q.ticker) === norm(pos.symbol) || (pos.name && norm(q.name) === norm(pos.name))));
     if (f) {
-      matched.add(pf.positions.indexOf(f)); pos.appValue = f.value; pos.missing = 0;
+      matched.add(pf.positions.indexOf(f)); pos.missing = 0;
+      if (f.bad || !(f.value > 0) || f.value > pos.size * 100) continue;   // стоимость прочитана с ошибкой — не калибруем
+      pos.appValue = f.value;
       if (pos.pendingSell) { delete pos.pendingSell; pushEvent({ type: "sync", text: `$${pos.symbol} is still in the app, the last sell didn't go through. will try again` }); }
       // калибровка цены входа по приложению — не дальше ±15% от цены покупки (урок FOMI)
       const mcRef = pos.entryMcap > 0 && pos.lastMcap > 0 && pos.lastPrice > 0 ? pos.entryMcap * pos.lastPrice / pos.lastMcap : 0;
@@ -296,6 +310,7 @@ export async function syncWithApp(bank, journal, force = false) {
       closePosition(bank, journal, pos, "gone from the app");
     }
   }
+  const announce = [];                                        // покупки, найденные сверкой: о них ещё не было поста в X
   for (const pb of [...(bank.pendingBuys || [])]) {
     const i = pf.positions.findIndex((q, kk) => !matched.has(kk) && (norm(q.ticker) === norm(pb.symbol) || (pb.name && norm(q.name) === norm(pb.name))));
     if (i >= 0) {
@@ -304,7 +319,8 @@ export async function syncWithApp(bank, journal, force = false) {
       bank.positions.push({ id: "p" + Date.now().toString(36), address: pb.address, symbol: pb.symbol, name: pb.name, url: pb.url,
         entryPrice, entryMcap: pb.mcap, lastPrice: entryPrice, size: pb.size, tokens: (pb.size * (1 - CFG.bank.feePct)) / entryPrice,
         remaining: 1, peak: entryPrice, tp1Done: false, openedAt: pb.at, via: "phone", thesisPosted: false, thesisTries: 0,
-        appValue: pf.positions[i].value, ...pb.meta });
+        appValue: pf.positions[i].bad ? undefined : pf.positions[i].value, ...pb.meta });
+      announce.push({ symbol: pb.symbol, post: pb.post || pb.meta?.thesis, size: pb.size, address: pb.address });
       bank.pendingBuys = bank.pendingBuys.filter((x) => x !== pb);
       bank.lastEntry[pb.address] = pb.at;
       pushEvent({ type: "buy", symbol: pb.symbol, size: pb.size, text: `found $${pb.symbol} in the app, the buy did go through. tracking it now` });
@@ -316,7 +332,7 @@ export async function syncWithApp(bank, journal, force = false) {
   // токен в кошельке, который он сам решил купить за последние сутки (но покупка не записалась) — его позиция
   const recent = loadDecisions().filter((e) => e.verdict === "buy" && e.address && Date.now() - e.t < 24 * 3600e3);
   const orphans = pf.positions.map((q, i) => ({ q, i })).filter(({ i }) => !matched.has(i))
-    .map(({ q, i }) => ({ q, i, ep: recent.slice().reverse().find((e) => norm(e.ticker) === norm(q.ticker)) })).filter((x) => x.ep);
+    .map(({ q, i }) => ({ q, i, ep: recent.slice().reverse().find((e) => norm(e.ticker) === norm(q.ticker)) })).filter((x) => x.ep && !x.q.bad && x.q.value > 0);
   if (orphans.length) {
     const quotes = await market.quotes(orphans.map((x) => x.ep.address)).catch(() => new Map());
     for (const { q, i, ep } of orphans) {
@@ -331,9 +347,11 @@ export async function syncWithApp(bank, journal, force = false) {
         thesis: ep.thesis, plan: ep.plan, signals: ep.signals, score: ep.score, thesisPosted: true, appValue: q.value, adopted: true });
       bank.lastEntry[ep.address] = ep.t;
       pushEvent({ type: "buy", symbol: ep.ticker, text: `found $${ep.ticker} in my wallet ($${q.value.toFixed(2)}), it's mine. managing it now` });
+      announce.push({ symbol: ep.ticker, post: ep.post || ep.thesis, size: +cost.toFixed(2), address: ep.address });
     }
   }
-  bank.external = pf.positions.filter((_, i) => !matched.has(i)).map((q) => ({ name: q.name, ticker: q.ticker, value: q.value, pnlPct: q.pnlPct }));
+  bank.external = pf.positions.filter((_, i) => !matched.has(i)).map((q) => ({ name: q.name, ticker: q.ticker, value: q.bad ? 0 : q.value, pnlPct: q.pnlPct }));
+  for (const a of announce) { const p = bank.positions.find((x) => x.address === a.address); if (p) p.post = a.post; }
   pushEvent({ type: "sync", text: `synced with pump.fun: cash $${bank.cash.toFixed(2)} (was $${before.toFixed(2)})` +
     (bank.external.length ? `. not mine: ${bank.external.map((q) => q.ticker || q.name).join(", ")}` : "") });
   log(`app sync: cash $${before} → $${bank.cash}, untracked ${bank.external.length}`);

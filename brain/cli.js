@@ -83,6 +83,11 @@ if (cmd?.startsWith("phone-") || ["scope-test", "x-check", "x-test"].includes(cm
       CFG.phone.dryRun = true;
       const app = await import("./phone/apps/pumpfun.js");
       console.log(await app.buy({ address: a, symbol: String(b).toUpperCase().replace(/^\$/, ""), usd: Number(c || CFG.bank.minPos), thesis: "" }));
+    } else if (cmd === "sell-test") {
+      if (!a || !b) fail("usage: npm run sell:test -- <CA> <TICKER> [pct 0.5|1]");
+      CFG.phone.dryRun = true;                                // весь путь продажи, но без Submit
+      const app = await import("./phone/apps/pumpfun.js");
+      console.log(await app.sell({ address: a, symbol: String(b).toUpperCase().replace(/^\$/, ""), pct: Number(c || 0.5) }));
     } else if (cmd === "scope-test") {
       if (!a || !b) fail("usage: npm run scope:test -- <CA> <TICKER>");
       const scope = await import("./phone/apps/scope.js");
@@ -166,7 +171,7 @@ if (cmd === "status") {
 } else if (cmd === "resume") {
   bank.halted = false; bank.pausedUntil = 0; console.log("resumed");
 } else {
-  console.log("commands: admin [status|on|pause|off] | status | sync | launch [usd] | fix TICKER PCT | playbook [rewrite] | llm-test | resume | stop | unstop | phone-ping [1|2|3|all] | phone-snap N | phone-debug N | phone-test CA TICKER [usd] | scope-test CA TICKER | x-check LINK TICKER | x-test TEXT");
+  console.log("commands: admin [status|on|pause|off] | status | sync | launch [usd] | fix TICKER PCT | playbook [rewrite] | llm-test | resume | stop | unstop | phone-ping [1|2|3|all] | phone-snap N | phone-debug N | phone-test CA TICKER [usd] | sell-test CA TICKER [pct] | scope-test CA TICKER | x-check LINK TICKER | x-test TEXT");
   done();
 }
 saveBank(bank); saveJournal(journal);

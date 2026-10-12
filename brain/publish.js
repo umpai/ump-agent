@@ -9,11 +9,15 @@ import { getFocus, getSteps } from "./live/screens.js";
 import { load, save } from "./store.js";
 
 export let lastState = null;
+let lastStart = 300;
 
 // История equity для графика PnL: снимок не чаще раза в минуту; последние 48 часов — поминутно,
 // старше — по одной точке на 15 минут. Только с момента запуска банка (launch).
 function recordEquity(eq, since) {
-  const h = load("equity", []).filter((p) => p.t >= since);
+  // точки-выбросы (ошибка чтения экрана) не держим в истории: equity не может быть больше 20 стартовых банков
+  const cap = Math.max(1000, (lastStart || 300) * 20);
+  const h = load("equity", []).filter((p) => p.t >= since && p.e >= 0 && p.e < cap);
+  if (!(eq >= 0 && eq < cap)) return h;
   const now = Date.now(), last = h[h.length - 1];
   if (last && now - last.t < 60e3) { last.e = eq; }
   else h.push({ t: now, e: eq });
@@ -67,6 +71,7 @@ export function publish(bank, brain, journal, prices, control = { mode: "on" }) 
   const lastScan = [...events].reverse().find((e) => e.type === "scan");
   const st = stats(journal.filter((t) => (t.closedAt || 0) > since));
   const pb = getPlaybook();
+  lastStart = bank.start || lastStart;
   const curve = recordEquity(r2(eq), since);
   const state = {
     updatedAt: Date.now(),
