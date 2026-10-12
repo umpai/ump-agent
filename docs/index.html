@@ -977,7 +977,8 @@ async function boot() {
     for (let y = 0; y < M; y++) for (let x = 0; x < N; x++) { const dx = x - (N - 1) / 2, dy = y - (M - 1) / 2; cells.push([x, y, Math.max(Math.abs(dx), Math.abs(dy)) * 10 + (Math.atan2(dy, dx) + Math.PI) / (2 * Math.PI)]); }
     cells.sort((a, b) => a[2] - b[2]);
     const t0 = performance.now(), dur = 900; let k = 0;
-    await new Promise(res => { const f = now => { const target = Math.min(cells.length, Math.ceil(cells.length * (now - t0) / dur)); for (; k < target; k++) { const [x, y] = cells[k]; cx.drawImage(img, x * sw, y * sh, sw, sh, x * cw, y * ch, cw, ch); } k < cells.length ? requestAnimationFrame(f) : res(); }; requestAnimationFrame(f); });
+    // a background tab pauses animation frames, so the boot never waits longer than 1.6 s
+    await Promise.race([wait(1600), new Promise(res => { const f = now => { const target = Math.min(cells.length, Math.ceil(cells.length * (now - t0) / dur)); for (; k < target; k++) { const [x, y] = cells[k]; cx.drawImage(img, x * sw, y * sh, sw, sh, x * cw, y * ch, cw, ch); } k < cells.length ? requestAnimationFrame(f) : res(); }; requestAnimationFrame(f); })]);
   } else if (img.naturalWidth) { cv.height = Math.round(cv.width * img.naturalHeight / img.naturalWidth); cx.drawImage(img, 0, 0, cv.width, cv.height); }
   ov.classList.add('text'); await wait(RM ? 150 : 600);
   ov.classList.add('done'); setTimeout(() => ov.remove(), 400);
