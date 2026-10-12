@@ -20,6 +20,9 @@ import { getControl, setControl, MODES } from "../control.js";
 import { phones, hand, stopped } from "../phone/phones.js";
 import { idleLoop } from "../conductor.js";
 import "./screens.js";
+import { tour } from "../phone/tour.js";
+
+let lastTour = null, touring = false;
 
 // ── админка: /admin#ТОКЕН. Без ADMIN_TOKEN (≥16 символов) в .env админка выключена. ──
 const adminOn = CFG.admin.token && CFG.admin.token.length >= 16;
@@ -38,10 +41,13 @@ button{font:inherit;padding:14px 18px;margin:6px 6px 6px 0;border:0;cursor:point
 <button class=on onclick="set('on')">on</button><button class=pause onclick="set('pause')">pause</button><button class=off onclick="set('off')">off</button>
 <p>on — trades normally<br>pause — researches and protects open positions, no new entries<br>off — everything stops, phones untouched</p>
 <button class=stop onclick="stop(true)">stop phones</button><button class=unstop onclick="stop(false)">unstop phones</button>
+<button class=unstop onclick="tourGo()">calibration tour</button> <span id=tr></span>
+<p>calibration tour — opens the app screens on all three phones and records their buttons. buys nothing, posts nothing.</p>
 <p>stop phones — no action on any phone until you unstop. bank mode (paper / live) is set in .env on the server and needs a restart.</p>
 <script>const t=location.hash.slice(1);const h={"x-admin-token":t,"content-type":"application/json"};
 async function load(){const r=await fetch("/admin/state",{headers:h});document.getElementById("s").textContent=r.ok?JSON.stringify(await r.json(),null,2):"wrong token";}
 async function set(m){await fetch("/admin/mode",{method:"POST",headers:h,body:JSON.stringify({mode:m})});load();}
+async function tourGo(){const r=await fetch("/admin/tour",{method:"POST",headers:h,body:"{}"});document.getElementById("tr").textContent=r.status==202?"running… about 2 minutes":await r.text();}
 async function stop(v){await fetch("/admin/stop",{method:"POST",headers:h,body:JSON.stringify({stop:v})});load();}
 load();setInterval(load,5000);</script>`;
 
@@ -91,6 +97,21 @@ http.createServer(async (req, res) => {
       const { mode } = await readBody(req);
       if (!MODES.includes(mode)) { res.writeHead(400); return res.end("bad mode"); }
       setControl(mode, "web"); res.writeHead(200); return res.end("ok");
+    }
+    // калибровка: обход экранов телефонов (ничего не покупает и не постит), результат — надписи и картинки
+    if (url === "/admin/tour" && req.method === "POST") {
+      const { phones: which, ca } = await readBody(req);
+      if (touring) { res.writeHead(409); return res.end("tour already running"); }
+      touring = true;
+      const list = (Array.isArray(which) ? which : [1, 2, 3]).map(Number).filter((n) => [1, 2, 3].includes(n));
+      tour(list, String(ca || "").replace(/[^1-9A-HJ-NP-Za-km-z]/g, "").slice(0, 60))
+        .then((r) => { lastTour = { at: Date.now(), screens: r }; }).catch((e) => { lastTour = { at: Date.now(), error: e.message }; })
+        .finally(() => { touring = false; });
+      res.writeHead(202); return res.end("started");
+    }
+    if (url === "/admin/tour") {
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      return res.end(JSON.stringify({ running: touring, ...(lastTour || {}) }));
     }
     if (url === "/admin/stop" && req.method === "POST") {
       const { stop } = await readBody(req);
