@@ -18,8 +18,25 @@ import { solUsd, toUsd } from "../../sources/solprice.js";
 const UI = loadUi("pumpfun");
 const ph = phones[1];
 ph.extraDanger = (UI.dangerWords || []).map((w) => w.toLowerCase());
+ph.app = "pump.fun app";
 const pkg = () => resolvePkg(ph, UI.package || CFG.phone.pkg.pump, "pump");
 const S = UI.steps;
+const LAUNCH_WAIT = UI.launchWaitMs || 6000;
+
+// открыть лист сделки: большая кнопка ⇄ TICKER внизу страницы токена
+async function openTradeSheet() {
+  if (!(await ph.tapSel(S.tradeButton, "trade"))) throw new Error("trade button not mapped — calibrate ui/pumpfun.json");
+  await wait(2200);
+}
+
+// сумма на встроенной клавиатуре приложения: стереть, потом набрать по цифре
+async function keypadEnter(str) {
+  const K = UI.keypad;
+  const { w, h } = await ph.size();
+  const tapKey = (k, label) => ph.tap(K[k][0] * w, K[k][1] * h, label);
+  for (let i = 0; i < 6; i++) await tapKey("del", i ? "" : "clear");
+  for (const ch of str) { if (!K[ch]) throw new Error(`no key "${ch}" on the keypad`); await tapKey(ch, ch); }
+}
 
 export async function openToken(address, symbol) {
   ph.step(`opening $${symbol} on pump.fun`);
@@ -30,7 +47,7 @@ export async function openToken(address, symbol) {
   } catch (e) { if (/unsafe|STOP|admin/.test(e.message)) throw e; }
   ph.step("searching by contract");
   await ph.openApp(await pkg());
-  await wait(3000);
+  await wait(LAUNCH_WAIT);
   if (!(await ph.tapSel(S.search, "search"))) throw new Error("search button not mapped — calibrate ui/pumpfun.json");
   await ph.tapSel(S.searchInput, "search field");
   await ph.type(address, "contract");
@@ -57,8 +74,8 @@ export async function buy({ address, symbol, usd, thesis }) {
   if (usd > CFG.bank.maxPos + 0.01) throw new Error(`$${usd} above MAX_POSITION_USD — refused`);
   if (usd < CFG.bank.minOrder) throw new Error(`$${usd} below the app minimum — refused`);
   await openToken(address, symbol);
-  if (!(await ph.tapSel(S.buyTab, "buy"))) throw new Error("buy button not found — calibrate ui/pumpfun.json");
-  await wait(1200);
+  await openTradeSheet();
+  if (S.buyTab?.xy) await ph.tapSel(S.buyTab, "buy");        // переключатель Buy/Sell, если появится в листе
   // свободный баланс с экрана покупки: не тратим резерв, даже если мозг считает иначе
   const pre = await ph.screen();
   const solBal = readNumber(pre.all, /balance[:\s]*([\d,]+(?:\.\d+)?)\s*sol/i);
@@ -69,19 +86,23 @@ export async function buy({ address, symbol, usd, thesis }) {
     return { filled: false, noCash: true, available: +usdAvail.toFixed(2) };
   }
   const amt = await amountFor(usd);
-  if (!(await ph.tapSel(S.amountInput, "amount", false))) throw new Error("amount field not found — calibrate ui/pumpfun.json");
-  await ph.clearField();
-  await ph.type(amt.str, `typing ${amt.unit === "$" ? "$" + amt.str : amt.str + " SOL"}`);
+  if (UI.keypad) await keypadEnter(amt.str);
+  else {
+    if (!(await ph.tapSel(S.amountInput, "amount", false))) throw new Error("amount field not found — calibrate ui/pumpfun.json");
+    await ph.clearField();
+    await ph.type(amt.str, `typing ${amt.unit === "$" ? "$" + amt.str : amt.str + " SOL"}`);
+  }
   await wait(800);
-  const v1 = await verify(ph, { ticker: symbol, amount: amt.str, kind: "buy screen", app: "pump.fun app" });
+  const v1 = await verify(ph, { ticker: symbol, amount: amt.str, kind: "BUY order sheet (amount entered, Submit button visible; NOT a sell sheet)", app: "pump.fun app" });
+  if (v1.ok && v1.saw && v1.saw.screen === "sell") v1.ok = false;
   if (!v1.ok) { await ph.back(); throw new Error(`buy screen check failed for $${symbol} / ${amt.str} (${v1.how}${v1.saw ? ": saw " + JSON.stringify(v1.saw) : ""}) — aborted`); }
   if (CFG.phone.dryRun) {
     ph.step(`${CFG.bankMode === "paper" ? "paper" : "dry run"}: confirm skipped for $${symbol}`);
-    await ph.back();
+    await ph.back(); await wait(600); await ph.back();
     if (thesis) await postThesis(symbol, thesis, { dry: true }).catch(() => {});
     return { filled: false, dry: true };
   }
-  await ph.tapSel(S.confirmBuy, `buy ${amt.unit === "$" ? "$" + amt.str : amt.str + " SOL"}`);
+  if (!(await ph.tapSel(S.confirmBuy, `buy ${amt.unit === "$" ? "$" + amt.str : amt.str + " SOL"}`))) throw new Error("submit button not mapped — calibrate ui/pumpfun.json");
   await wait(2000);
   await ph.tapSel(S.confirmSheet, "confirm").catch(() => false);      // у некоторых версий есть второй шаг
   await wait(6000);
@@ -141,19 +162,22 @@ async function positionUsd(symbol) {
 export async function sell({ address, symbol, pct }) {
   await openToken(address, symbol);
   const before = await positionUsd(symbol);
-  if (!(await ph.tapSel(S.sellTab, "sell"))) throw new Error("sell button not found — calibrate ui/pumpfun.json");
-  await wait(1200);
+  await openTradeSheet();
+  if (!(await ph.tapSel(S.sellTab, "sell"))) { await ph.back(); throw new Error("sell switch not found on the trade sheet — calibrate ui/pumpfun.json"); }
+  await wait(1500);
   await ph.tapSel(pct >= 0.99 ? S.sell100 : S.sell50, pct >= 0.99 ? "100%" : "50%");
   const s1 = await ph.screen();
   if (/minimum|too small/.test(s1.all)) { await ph.back(); return { filled: false, stuck: true }; }
-  const v1 = await verify(ph, { ticker: symbol, kind: "sell screen", app: "pump.fun app" });
+  await wait(800);
+  const v1 = await verify(ph, { ticker: symbol, kind: "SELL order sheet (selling my holding; NOT a buy sheet)", app: "pump.fun app" });
+  if (v1.ok && v1.saw && v1.saw.screen === "buy") v1.ok = false;
   if (!v1.ok) { await ph.back(); throw new Error(`sell screen check failed for $${symbol} (${v1.how}) — aborted`); }
   if (CFG.phone.dryRun) {
     ph.step(`${CFG.bankMode === "paper" ? "paper" : "dry run"}: would sell ${pct >= 0.99 ? "all" : "half"} of $${symbol}`);
-    await ph.back();
+    await ph.back(); await wait(600); await ph.back();
     return { filled: false, dry: true };
   }
-  await ph.tapSel(S.confirmSell, `sell ${pct >= 0.99 ? "all" : "half"}`);
+  if (!(await ph.tapSel(S.confirmSell, `sell ${pct >= 0.99 ? "all" : "half"}`))) throw new Error("submit button not mapped — calibrate ui/pumpfun.json");
   await wait(2000);
   await ph.tapSel(S.confirmSheet, "confirm").catch(() => false);
   await wait(7000);
@@ -170,16 +194,17 @@ export async function sell({ address, symbol, pct }) {
 export async function portfolio() {
   ph.step("checking my pump.fun balance");
   await ph.openApp(await pkg());
-  await wait(3000);
+  await wait(LAUNCH_WAIT);
   if (!(await ph.tapSel(S.navPortfolio, "portfolio"))) throw new Error("portfolio tab not found — calibrate ui/pumpfun.json");
   await wait(4000);
   const seen = new Map();
-  let cash = NaN, count = null;
+  let cash = NaN, total = NaN, count = null;
   for (let page = 0; page < 4; page++) {
     const jpg = await ph.screenshot().catch(() => null);
     const v = jpg ? await readPortfolio(jpg) : null;
     if (v?.ok) {
-      if (!Number.isFinite(cash) && Number.isFinite(Number(v.cash))) cash = await toUsd(v.cash, v.cashUnit);
+      if (!Number.isFinite(cash) && v.cash != null && Number.isFinite(Number(v.cash))) cash = await toUsd(v.cash, v.cashUnit);
+      if (!Number.isFinite(total) && v.total != null && Number.isFinite(Number(v.total))) total = await toUsd(v.total, v.totalUnit);
       count ??= Number(v.count) || null;
       for (const p of v.positions || []) {
         const key = String(p.ticker || p.name || "").toUpperCase();
@@ -192,15 +217,18 @@ export async function portfolio() {
     await wait(1500);
   }
   await ph.tapSel(S.navHome, "home").catch(() => {});
-  if (!Number.isFinite(cash)) return null;
   const positions = [...seen.values()];
+  // экран показывает только общую стоимость: свободные = всего − позиции (только если список прочитан целиком)
+  if (!Number.isFinite(cash) && Number.isFinite(total) && (positions.length === 0 ? count === 0 || count == null : count != null && positions.length >= count))
+    cash = total - positions.reduce((a, p) => a + (p.value || 0), 0);
+  if (!Number.isFinite(cash) || cash < 0) return null;
   return { cash, count, positions, closed: [], complete: count != null && positions.length >= count };
 }
 
 // простой: открыть ленту pump.fun и пролистать
 export async function idle() {
   const s = await ph.screen().catch(() => ({ all: "" }));
-  if (!s.all) { await ph.openApp(await pkg()); await wait(3000); }
+  if (!s.all) { await ph.openApp(await pkg()); await wait(LAUNCH_WAIT); }
   ph.step("browsing the pump.fun board");
   await ph.scroll("down", 0.35);
 }

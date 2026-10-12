@@ -37,7 +37,7 @@ export async function verify(phone, { ticker, amount, kind, app }) {
   if (!v) return { ok: false, how: "vision unavailable" };
   if (v.danger) await phone.bail("unsafe screen detected by vision");
   const tick = String(v.ticker || "").replace(/^\$/, "").toLowerCase() === String(ticker).toLowerCase();
-  const amt = !amount || String(v.amount || "").replace(/[$,\s]|sol/gi, "") === String(amount).replace(/[$,\s]|sol/gi, "");
+  const amt = !amount || String(v.amount || "").replace(/[$,\s]|usdc|usd|sol/gi, "").replace(/\.0+$/, "") === String(amount).replace(/[$,\s]|usdc|usd|sol/gi, "").replace(/\.0+$/, "");
   return { ok: !!v.ok && tick && amt, how: "vision", saw: v };
 }
 
