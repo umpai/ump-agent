@@ -1,0 +1,8 @@
+node_modules/
+.env
+*.key
+wallet*.json
+.DS_Store
+# память мозга живёт только на сервере
+brain/data/*
+!brain/data/.gitkeep
