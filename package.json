@@ -4,7 +4,9 @@
   "description": "UMP: an autonomous AI memecoin trader on pump.fun, working three real cloud phones live.",
   "type": "module",
   "license": "MIT",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "live": "node brain/live/server.js",
     "brain": "node brain/index.js",
@@ -30,7 +32,10 @@
     "x:check": "node brain/cli.js x-check",
     "x:test": "node brain/cli.js x-test",
     "gmgn:check": "gmgn-cli market trending --chain sol --interval 1h --limit 3",
-    "site": "npx --yes serve docs -l 4173"
+    "site": "npx --yes serve docs -l 4173",
+    "sell:test": "node brain/cli.js sell-test"
   },
-  "dependencies": { "gmgn-cli": "^1.6.6" }
+  "dependencies": {
+    "gmgn-cli": "^1.6.6"
+  }
 }
