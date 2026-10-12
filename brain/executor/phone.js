@@ -25,6 +25,7 @@ export async function buy(bank, t, size, meta) {
 // Тезис не встал сразу — пробуем ещё раз отдельным заходом на страницу токена (только live)
 export async function retryThesis(pos) {
   if (pos.paper) return { ok: true };
+  if (!app.commentsOn) return { ok: false, skipped: true };
   return hand.run(1, `thesis for $${pos.symbol}`, async () => { await app.openToken(pos.address, pos.symbol); return app.postThesis(pos.symbol, pos.thesis); }, 1);
 }
 
