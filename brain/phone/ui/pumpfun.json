@@ -40,7 +40,7 @@
       ],
       "pick": "highest",
       "xy": null,
-      "vision": "the 'Sell' tab, toggle or button that switches the order sheet to selling this token"
+      "vision": "the red '- TICKER' sell button at the bottom of the token page"
     },
     "amountInput": {
       "xy": null,
@@ -54,7 +54,7 @@
       ],
       "xy": [
         0.849,
-        0.441
+        0.515
       ]
     },
     "sell50": {
@@ -62,8 +62,8 @@
         "50%"
       ],
       "xy": [
-        0.383,
-        0.441
+        0.384,
+        0.515
       ]
     },
     "confirmBuy": {
@@ -83,8 +83,9 @@
       "pick": "lowest",
       "xy": [
         0.5,
-        0.975
-      ]
+        0.932
+      ],
+      "note": "после sellScroll"
     },
     "confirmSheet": {
       "textAny": [
@@ -156,10 +157,26 @@
     },
     "tradeButton": {
       "xy": [
-        0.4,
+        0.22,
         0.93
       ],
-      "note": "большая зелёная кнопка ⇄ TICKER внизу страницы токена. НЕ молния справа — это мгновенная покупка"
+      "note": "без позиции — одна кнопка ⇄ TICKER во всю ширину, с позицией — «+ TICKER» слева; 0.22 попадает в обе. НЕ молния справа — это мгновенная покупка"
+    },
+    "sellButton": {
+      "xy": [
+        0.605,
+        0.932
+      ],
+      "note": "красная «− TICKER», есть только когда токен у меня есть"
+    },
+    "sellScroll": {
+      "swipe": [
+        0.5,
+        0.955,
+        0.5,
+        0.55
+      ],
+      "note": "лист продажи выше экрана: Submit виден только после прокрутки вверх"
     }
   },
   "boughtWords": [
@@ -222,5 +239,7 @@
       0.832,
       0.8
     ]
-  }
+  },
+  "comments": false,
+  "sheetWaitMs": 4000
 }
