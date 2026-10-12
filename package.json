@@ -22,6 +22,7 @@
     "unstop": "node brain/cli.js unstop",
     "phone:ping": "node brain/cli.js phone-ping",
     "phone:snap": "node brain/cli.js phone-snap",
+    "phone:tour": "node brain/cli.js phone-tour",
     "phone:debug": "node brain/cli.js phone-debug",
     "phone:test": "node brain/cli.js phone-test",
     "scope:test": "node brain/cli.js scope-test",
