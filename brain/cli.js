@@ -4,6 +4,7 @@
 //   npm run sync                                 — сверка с приложением pump.fun прямо сейчас (live)
 //   npm run launch -- <usd>                      — старт банка с нуля (отказывается, если есть открытые live-позиции)
 //   npm run fix -- TICKER PCT                    — поправить итог сделки под факт из приложения
+//   npm run threshold -- 70                      — порог скора для входа
 //   npm run playbook [-- rewrite]                — показать / переписать плейбук
 //   npm run llm:test                             — проверка модели (текст и картинка с телефона #1)
 //   npm run stop / unstop                        — аварийный запрет любых действий на всех телефонах
@@ -154,6 +155,14 @@ if (cmd === "status") {
     console.log("vision →", v, v ? "" : (await import("./llmcall.js")).lastLlmError);
   } catch (e) { console.log("vision skipped:", e.message); }
   done();
+} else if (cmd === "threshold") {
+  // npm run threshold -- 70 — порог скора для входа прямо сейчас (дальше он подстраивается сам от этого значения)
+  const v = Number(a);
+  if (!Number.isFinite(v) || v < 40 || v > 95) fail("usage: npm run threshold -- 70   (40..95)");
+  const { load: ld, save: sv } = await import("./store.js");
+  const br = loadBrain(); const was = br.threshold; br.threshold = Math.round(v); sv("brain", br);
+  console.log(`threshold ${was} → ${br.threshold}`);
+  pushEvent({ type: "thought", kind: "think", text: `my entry threshold is now ${br.threshold}. pickier.` });
 } else if (cmd === "resume") {
   bank.halted = false; bank.pausedUntil = 0; console.log("resumed");
 } else {

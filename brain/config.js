@@ -32,8 +32,8 @@ export const CFG = {
     unit: "usd",
     start: num("START_BANK_USD", 300),
     reserve: num("RESERVE_USD", 15),               // не торгуется никогда
-    minPos: num("MIN_POSITION_USD", 10),
-    maxPos: num("MAX_POSITION_USD", 25),
+    minPos: num("MIN_POSITION_USD", 5),
+    maxPos: num("MAX_POSITION_USD", 15),
     minOrder: num("PUMP_MIN_ORDER_USD", 1),        // меньше этого приложение не продаст
     maxOpen: num("MAX_OPEN_POSITIONS", 0),          // 0 = без лимита
     maxExposurePct: num("MAX_EXPOSURE_PCT", 0.9),
@@ -64,7 +64,7 @@ export const CFG = {
     pumpFunOnly: env("PUMPFUN_ONLY", "1") !== "0",
     maxAgeH: num("MAX_AGE_H", 0),
     minAgeMin: num("MIN_AGE_MIN", 0),
-    minVol1hUsd: num("MIN_VOL_1H_USD", 10000),
+    minVol1hUsd: num("MIN_VOL_1H_USD", 25000),
     maxRug: num("MAX_RUG", 0.45),
     maxTop10: num("MAX_TOP10", 0.35),
     maxBundler: num("MAX_BUNDLER", 0.35),
@@ -72,7 +72,7 @@ export const CFG = {
   },
 
   brain: {
-    startThreshold: num("ENTRY_SCORE", 62),
+    startThreshold: num("ENTRY_SCORE", 70),
     researchCooldownMin: num("RESEARCH_COOLDOWN_MIN", 15),
     picksPerScan: num("PICKS_PER_SCAN", 4),
     relookMovePct: num("RELOOK_MOVE_PCT", 35),

@@ -42,7 +42,7 @@ export function learnFromTrade(trade, journal) {
   if (last.length >= 8) {
     const wr = last.filter((t) => t.pnlPct > 0).length / last.length;
     if (wr < 0.35) b.threshold = Math.min(85, b.threshold + 1);
-    if (wr > 0.55) b.threshold = Math.max(55, b.threshold - 1);
+    if (wr > 0.55) b.threshold = Math.max(CFG.brain.startThreshold - 5, b.threshold - 1);   // не ниже ENTRY_SCORE − 5
   }
   const top = Object.entries(changes).sort((a, c) => Math.abs(c[1]) - Math.abs(a[1]))[0];
   const lesson = `gen ${b.generation + 1}: $${trade.symbol} ${trade.pnlPct >= 0 ? "+" : ""}${(trade.pnlPct * 100).toFixed(0)}% → ${top[0]} ${top[1] >= 0 ? "↑" : "↓"}`;
