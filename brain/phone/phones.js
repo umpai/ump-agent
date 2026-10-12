@@ -11,6 +11,7 @@ import * as vm from "./vmos-api.js";
 import { CFG } from "../config.js";
 import { emit } from "../bus.js";
 import { getControl } from "../control.js";
+import { locate } from "./vision.js";
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const stopFile = () => path.join(CFG.paths.data, "STOP");
@@ -119,6 +120,11 @@ export class Phone {
     const hit = await this.find(sel, fresh);
     if (hit) return { x: hit.x, y: hit.y, how: "ui" };
     if (Array.isArray(sel?.xy)) { const { w, h } = await this.size(); return { x: sel.xy[0] * w, y: sel.xy[1] * h, how: "xy" }; }
+    if (sel?.vision) {                                   // последний шанс: «глаза» ищут элемент по описанию
+      const jpg = await this.screenshot().catch(() => null);
+      const p = jpg && await locate(jpg, sel.vision, this.app || "phone app").catch(() => null);
+      if (p && (!sel.visionLabel || p.label.includes(sel.visionLabel))) { const { w, h } = await this.size(); return { x: p.x * w, y: p.y * h, how: "vision" }; }
+    }
     return null;
   }
   // нажать элемент; false — если его нет на экране и запасных координат тоже нет

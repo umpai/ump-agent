@@ -13,12 +13,21 @@ export async function look(jpg, question, app = "trading app") {
   return askJson(sys, question, { image: jpg, maxTokens: 3000, temperature: 0 });
 }
 
+// Найти элемент на экране, когда нет ни текста интерфейса, ни координат: доли экрана 0..1
+export async function locate(jpg, what, app = "trading app") {
+  const sys = `You locate one control on a phone screenshot of the ${app} for an automation system. ${UNTRUSTED} Answer ONLY with JSON: ` +
+    '{"found":true|false,"x":number,"y":number,"label":"the text on the control, lowercase"}. x and y are the CENTER of the control as fractions of the image width and height (0..1). found=false if the control is not clearly visible.';
+  const out = await askJson(sys, `find: ${what}`, { image: jpg, maxTokens: 800, temperature: 0 });
+  const x = Number(out?.x), y = Number(out?.y);
+  return out?.found && x > 0 && x < 1 && y > 0 && y < 1 ? { x, y, label: String(out.label || "").toLowerCase() } : null;
+}
+
 // Портфель в приложении pump.fun: баланс и открытые позиции
 export async function readPortfolio(jpg) {
   const sys = `You read a screenshot of the pump.fun app portfolio/profile screen for a bookkeeping system. ${UNTRUSTED} Answer ONLY with JSON: ` +
     '{"ok":true|false,"cash":number|null,"cashUnit":"SOL"|"USD"|"","total":number|null,"totalUnit":"SOL"|"USD"|"","count":number|null,' +
     '"positions":[{"name":"token name","ticker":"ticker","value":number,"valueUnit":"SOL"|"USD","pnlPct":number}]}. ' +
-    "cash is the free balance not in tokens. list EVERY position row you can see, even partially visible. pnlPct is a percent number, negative if red/down. count is the number of positions if the screen states it. ok=false if this is not a portfolio screen.";
+    "cash is the free balance not in tokens (USDC counts as USD, cashUnit USD); if the screen only shows a total portfolio value, set cash=null and put it in total. list EVERY position row you can see, even partially visible. pnlPct is a percent number, negative if red/down. count is the number of positions if the screen states it. ok=false if this is not a portfolio screen.";
   return askJson(sys, "read the portfolio", { image: jpg, maxTokens: 2000, temperature: 0 });
 }
 
