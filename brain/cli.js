@@ -9,6 +9,7 @@
 //   npm run stop / unstop                        — аварийный запрет любых действий на всех телефонах
 //   npm run phone:ping -- 1|2|3|all              — подключение и кадр с телефона
 //   npm run phone:snap -- 1|2|3                  — кадр + все элементы экрана (для карты интерфейса)
+//   npm run phone:tour -- [1|2|3|all] [CA]        — обход экранов для калибровки (ничего не покупает)
 //   npm run phone:debug -- 1|2|3                 — размер экрана, установленные пакеты, тексты на экране
 //   npm run phone:test -- <CA> <TICKER> [usd]    — весь путь покупки на #1 БЕЗ финального подтверждения
 //   npm run scope:test -- <CA> <TICKER>          — #2 открывает токен на gmgn
@@ -38,6 +39,15 @@ if (cmd === "admin") {
 
 if (cmd === "stop") { fs.mkdirSync(CFG.paths.data, { recursive: true }); fs.writeFileSync(`${CFG.paths.data}/STOP`, String(Date.now())); console.log("STOP set — all phone actions halted"); done(); }
 if (cmd === "unstop") { fs.rmSync(`${CFG.paths.data}/STOP`, { force: true }); console.log("STOP removed"); done(); }
+
+if (cmd === "phone-tour") {
+  const { tour, summary } = await import("./phone/tour.js");
+  const which = a && a !== "all" ? [Number(a)] : [1, 2, 3];
+  const out = await tour(which, b || "");
+  console.log(summary(out));
+  console.log(`\nscreens saved to ${CFG.paths.data}/phone/<N>/tour/`);
+  done();
+}
 
 if (cmd?.startsWith("phone-") || ["scope-test", "x-check", "x-test"].includes(cmd)) {
   const { phones, wait } = await import("./phone/phones.js");
