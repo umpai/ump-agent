@@ -21,12 +21,13 @@ ph.extraDanger = (UI.dangerWords || []).map((w) => w.toLowerCase());
 ph.app = "pump.fun app";
 const pkg = () => resolvePkg(ph, UI.package || CFG.phone.pkg.pump, "pump");
 const S = UI.steps;
+export const commentsOn = UI.comments !== false;
 const LAUNCH_WAIT = UI.launchWaitMs || 6000;
 
 // открыть лист сделки: большая кнопка ⇄ TICKER внизу страницы токена
 async function openTradeSheet() {
   if (!(await ph.tapSel(S.tradeButton, "trade"))) throw new Error("trade button not mapped — calibrate ui/pumpfun.json");
-  await wait(2200);
+  await wait(UI.sheetWaitMs || 4000);                      // лист выезжает с анимацией: раньше нажатия теряются
 }
 
 // сумма на встроенной клавиатуре приложения: стереть, потом набрать по цифре
@@ -113,18 +114,19 @@ export async function buy({ address, symbol, usd, thesis }) {
     confirmed = UI.boughtWords.some((w) => after.all.includes(w.toLowerCase()));
     if (!confirmed) {
       const jpg = await ph.screenshot().catch(() => null);
-      const v = jpg && await look(jpg, `A buy of ${symbol} was just submitted. ok=true only if the screen shows a success message or my holding of ${symbol}.`, "pump.fun app");
+      const v = jpg && await look(jpg, `A buy of ${symbol} was just submitted. ok=true only if the screen shows a success message, my holding of ${symbol}, or the token page now has TWO trade buttons at the bottom: a green '+ ${symbol}' and a red '- ${symbol}' (the red one only appears once I own it).`, "pump.fun app");
       confirmed = !!v?.ok;
     }
   }
   if (!confirmed) { ph.step(`can't confirm the $${symbol} buy, checking at the next sync`); return { filled: false, unconfirmed: true }; }
   ph.step(`bought $${symbol}`);
   const th = thesis ? await postThesis(symbol, thesis) : { ok: false, error: "no thesis" };
-  return { filled: true, thesisPosted: th.ok, thesisError: th.error };
+  return { filled: true, thesisPosted: th.ok, thesisError: th.skipped ? null : th.error };
 }
 
 // Тезис в комментариях к токену. dry — набрать, но не отправлять (paper)
 export async function postThesis(symbol, text, { dry = false } = {}) {
+  if (UI.comments === false) return { ok: false, skipped: true, error: "comments are off in ui/pumpfun.json" };
   try {
     await wait(1500);
     if (!(await ph.tapSel(S.commentsTab, "comments"))) await ph.scroll("down", 0.5);
@@ -162,10 +164,16 @@ async function positionUsd(symbol) {
 export async function sell({ address, symbol, pct }) {
   await openToken(address, symbol);
   const before = await positionUsd(symbol);
-  await openTradeSheet();
-  if (!(await ph.tapSel(S.sellTab, "sell"))) { await ph.back(); throw new Error("sell switch not found on the trade sheet — calibrate ui/pumpfun.json"); }
-  await wait(1500);
-  await ph.tapSel(pct >= 0.99 ? S.sell100 : S.sell50, pct >= 0.99 ? "100%" : "50%");
+  // с позицией внизу две кнопки: «+ TICKER» (купить ещё) и красная «− TICKER» (продать)
+  if (!(await ph.tapSel(S.sellButton, "sell")) && !(await ph.tapSel(S.sellTab, "sell"))) throw new Error("sell button not found — calibrate ui/pumpfun.json");
+  await wait(UI.sheetWaitMs || 4000);
+  await ph.tapSel(pct >= 0.99 ? S.sell100 : S.sell50, pct >= 0.99 ? "max" : "50%");
+  await wait(2500);
+  if (S.sellScroll?.swipe) {                                 // Submit ниже края экрана — прокручиваем лист
+    const { w, h } = await ph.size(); const [x1, y1, x2, y2] = S.sellScroll.swipe;
+    await ph.swipe(x1 * w, y1 * h, x2 * w, y2 * h);
+    await wait(2000);
+  }
   const s1 = await ph.screen();
   if (/minimum|too small/.test(s1.all)) { await ph.back(); return { filled: false, stuck: true }; }
   await wait(800);
@@ -208,8 +216,12 @@ export async function portfolio() {
       count ??= Number(v.count) || null;
       for (const p of v.positions || []) {
         const key = String(p.ticker || p.name || "").toUpperCase();
-        if (key && !seen.has(key)) seen.set(key, { name: String(p.name || ""), ticker: String(p.ticker || "").replace(/^\$/, "").toUpperCase(),
-          value: (await toUsd(p.value, p.valueUnit)) || 0, pnlPct: Number(p.pnlPct) || 0 });
+        if (!key || seen.has(key)) continue;
+        let value = (await toUsd(p.value, p.valueUnit)) || 0;
+        // «глаза» иногда читают количество токенов или капу вместо стоимости: позиция дороже 5 банков — ошибка чтения
+        const bad = !(value >= 0) || value > CFG.bank.start * 5;
+        if (bad) value = 0;
+        seen.set(key, { name: String(p.name || ""), ticker: String(p.ticker || "").replace(/^\$/, "").toUpperCase(), value, pnlPct: Number(p.pnlPct) || 0, bad });
       }
     }
     if (count != null && seen.size >= count) break;
@@ -221,8 +233,9 @@ export async function portfolio() {
   // экран показывает только общую стоимость: свободные = всего − позиции (только если список прочитан целиком)
   if (!Number.isFinite(cash) && Number.isFinite(total) && (positions.length === 0 ? count === 0 || count == null : count != null && positions.length >= count))
     cash = total - positions.reduce((a, p) => a + (p.value || 0), 0);
-  if (!Number.isFinite(cash) || cash < 0) return null;
-  return { cash, count, positions, closed: [], complete: count != null && positions.length >= count };
+  if (!Number.isFinite(cash) || cash < 0 || cash > CFG.bank.start * 5) return null;
+  if (Number.isFinite(total) && positions.some((p) => p.bad)) cash = Math.min(cash, total);
+  return { cash, count, positions, closed: [], complete: count != null && positions.length >= count && !positions.some((p) => p.bad) };
 }
 
 // простой: открыть ленту pump.fun и пролистать
